@@ -899,6 +899,22 @@
   </div>
 </div>
 
+<!-- ========== RENAME MODAL ========== -->
+<div class="overlay" id="renameModal">
+  <div class="overlay-box">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">選手名を変更</div>
+    <div class="form-group">
+      <label class="form-label">新しい名前</label>
+      <input class="form-input" id="renameInput" placeholder="選手名を入力" />
+    </div>
+    <div style="display:flex; gap:8px; margin-top:12px;">
+      <button class="btn btn-ghost btn-full" onclick="closeRenameModal()">キャンセル</button>
+      <button class="btn btn-primary btn-full" onclick="applyRename()">変更する</button>
+    </div>
+  </div>
+</div>
+
 <!-- ========== PITCHER MODAL ========== -->
 <div class="overlay" id="pitcherModal">
   <div class="overlay-box">
@@ -1351,7 +1367,7 @@ function buildLineups() {
       el.className = 'player-row' + (isCurrent ? ' current' : '');
       el.innerHTML = `
         <div class="player-order">${idx + 1}</div>
-        <div class="player-name">${escapeHtml(p.name)}</div>
+        <div class="player-name" onclick="openRenameModal(${ti},${idx})" style="cursor:pointer;" title="タップして名前変更">${escapeHtml(p.name)} <span style="font-size:10px;color:var(--gray-400);">✎</span></div>
         <div class="player-stats-row">
           <span class="stat-chip avg">${avg}</span>
           <span class="stat-chip">${p.pa}PA</span>
@@ -1494,6 +1510,53 @@ function closeResult() {
 }
 
 /* ========== PITCHER MODAL ========== */
+/* ========== RENAME PLAYER ========== */
+let _renameTarget = null; // { ti, idx }
+
+function openRenameModal(ti, idx) {
+  _renameTarget = { ti, idx };
+  const name = match.teams[ti].players[idx].name;
+  document.getElementById('renameInput').value = name;
+  document.getElementById('renameModal').classList.add('open');
+  setTimeout(() => document.getElementById('renameInput').focus(), 100);
+}
+
+function closeRenameModal() {
+  document.getElementById('renameModal').classList.remove('open');
+  _renameTarget = null;
+}
+
+function applyRename() {
+  if (!_renameTarget) return;
+  const newName = document.getElementById('renameInput').value.trim();
+  if (!newName) { showToast('名前を入力してください', 'error'); return; }
+  const { ti, idx } = _renameTarget;
+  const oldName = match.teams[ti].players[idx].name;
+  match.teams[ti].players[idx].name = newName;
+  // ログの名前も更新
+  match.log = match.log.map(entry => {
+    if (typeof entry === 'object' && entry.text) {
+      return { ...entry, text: entry.text.replaceAll(oldName, newName) };
+    }
+    if (typeof entry === 'string') return entry.replaceAll(oldName, newName);
+    return entry;
+  });
+  // match はインメモリ管理なので保存不要
+  closeRenameModal();
+  refreshUI();
+  showToast(`${oldName} → ${newName} に変更しました`, 'score');
+}
+
+// Enterキーで確定
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('renameModal').classList.contains('open')) {
+    applyRename();
+  }
+  if (e.key === 'Escape' && document.getElementById('renameModal').classList.contains('open')) {
+    closeRenameModal();
+  }
+});
+
 function openPitcherModal() {
   const wrap = document.getElementById('pitcherForms');
   wrap.innerHTML = '';
@@ -1588,18 +1651,23 @@ async function sendToSheet() {
   ensureScoresLength();
   recalcTotals();
 
-  // ペイロード組み立て（選手成績のみ）
+  // ペイロード組み立て（選手成績：打率降順ソート）
   const players = [];
   match.teams.forEach(t => {
     t.players.forEach(p => {
+      const ab = p.ab || 0;
+      const hits = p.hits || 0;
       players.push({
         name: p.name,
-        pa: p.pa||0, ab: p.ab||0, hits: p.hits||0,
+        pa: p.pa||0, ab, hits,
         doubles: p.doubles||0, triples: p.triples||0, hrs: p.hrs||0,
-        walks: p.walks||0, ks: p.ks||0, rbi: p.rbi||0
+        walks: p.walks||0, ks: p.ks||0, rbi: p.rbi||0,
+        _avg: ab > 0 ? hits / ab : -1
       });
     });
   });
+  players.sort((a, b) => b._avg - a._avg);
+  players.forEach(p => delete p._avg);
 
   const payload = { players, pitchers: match.pitchers || [] };
 
