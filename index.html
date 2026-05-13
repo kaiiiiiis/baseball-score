@@ -1558,46 +1558,60 @@ document.addEventListener('keydown', e => {
 });
 
 function openPitcherModal() {
+  recalcTotals();
   const wrap = document.getElementById('pitcherForms');
   wrap.innerHTML = '';
   match.teams.forEach((t, ti) => {
     const badge = ti === 0 ? 'a' : 'b';
     const saved = (match.pitchers && match.pitchers[ti]) || {};
+
+    // 相手チームのデータから自動計算
+    const opp = match.teams[ti === 0 ? 1 : 0];
+    const autoBf   = saved.bf  !== undefined ? saved.bf  : opp.players.reduce((s, p) => s + (p.pa || 0), 0);
+    const autoH    = saved.h   !== undefined ? saved.h   : opp.players.reduce((s, p) => s + (p.hits || 0), 0);
+    const autoK    = saved.k   !== undefined ? saved.k   : opp.players.reduce((s, p) => s + (p.ks || 0), 0);
+    const autoBb   = saved.bb  !== undefined ? saved.bb  : opp.players.reduce((s, p) => s + (p.walks || 0), 0);
+    const autoR    = saved.r   !== undefined ? saved.r   : (opp.total || 0);
+    const autoEr   = saved.er  !== undefined ? saved.er  : (opp.total || 0); // 初期値は失点と同じ（手動で修正可）
+    const autoName = saved.name || (t.players[0] ? t.players[0].name : `投手${ti+1}`);
+    const autoIp   = saved.ip  || '';
+
     wrap.innerHTML += `
       <div style="margin-bottom:20px;">
         <span class="team-badge ${badge}">${escapeHtml(t.name)}</span>
+        <div style="font-size:11px;color:var(--gray-400);margin:4px 0 8px;">※ BF・被安打・三振・四球・失点は自動入力済み。投球回と自責点を確認してください。</div>
         <div class="form-group" style="margin-top:8px;">
           <label class="form-label">投手名</label>
-          <input class="form-input" id="p_name_${ti}" value="${escapeHtml(saved.name||'')}" placeholder="投手名" />
+          <input class="form-input" id="p_name_${ti}" value="${escapeHtml(autoName)}" placeholder="投手名" />
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div class="form-group">
             <label class="form-label">投球回 (例: 3.1)</label>
-            <input class="form-input" type="number" step="0.1" id="p_ip_${ti}" value="${saved.ip||''}" placeholder="3.0" />
+            <input class="form-input" type="number" step="0.1" id="p_ip_${ti}" value="${autoIp}" placeholder="3.0" />
           </div>
           <div class="form-group">
             <label class="form-label">打者数 (BF)</label>
-            <input class="form-input" type="number" id="p_bf_${ti}" value="${saved.bf||''}" placeholder="0" />
+            <input class="form-input" type="number" id="p_bf_${ti}" value="${autoBf}" placeholder="0" />
           </div>
           <div class="form-group">
             <label class="form-label">失点</label>
-            <input class="form-input" type="number" id="p_r_${ti}" value="${saved.r||''}" placeholder="0" />
+            <input class="form-input" type="number" id="p_r_${ti}" value="${autoR}" placeholder="0" />
           </div>
           <div class="form-group">
             <label class="form-label">自責点</label>
-            <input class="form-input" type="number" id="p_er_${ti}" value="${saved.er||''}" placeholder="0" />
+            <input class="form-input" type="number" id="p_er_${ti}" value="${autoEr}" placeholder="0" />
           </div>
           <div class="form-group">
             <label class="form-label">被安打</label>
-            <input class="form-input" type="number" id="p_h_${ti}" value="${saved.h||''}" placeholder="0" />
+            <input class="form-input" type="number" id="p_h_${ti}" value="${autoH}" placeholder="0" />
           </div>
           <div class="form-group">
             <label class="form-label">三振</label>
-            <input class="form-input" type="number" id="p_k_${ti}" value="${saved.k||''}" placeholder="0" />
+            <input class="form-input" type="number" id="p_k_${ti}" value="${autoK}" placeholder="0" />
           </div>
           <div class="form-group">
             <label class="form-label">四球</label>
-            <input class="form-input" type="number" id="p_bb_${ti}" value="${saved.bb||''}" placeholder="0" />
+            <input class="form-input" type="number" id="p_bb_${ti}" value="${autoBb}" placeholder="0" />
           </div>
         </div>
       </div>`;
