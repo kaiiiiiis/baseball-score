@@ -1499,38 +1499,23 @@ async function sendToSheet() {
   if (!url) { showStatus('URLを入力してください', 'error'); return; }
 
   localStorage.setItem('gasUrl', url);
-
   ensureScoresLength();
   recalcTotals();
 
-  // Build payload
+  // ペイロード組み立て（選手成績のみ）
   const players = [];
   match.teams.forEach(t => {
     t.players.forEach(p => {
       players.push({
-        team: t.name, name: p.name,
+        name: p.name,
         pa: p.pa||0, ab: p.ab||0, hits: p.hits||0,
         doubles: p.doubles||0, triples: p.triples||0, hrs: p.hrs||0,
-        ks: p.ks||0, walks: p.walks||0, rbi: p.rbi||0
+        walks: p.walks||0, ks: p.ks||0, rbi: p.rbi||0
       });
     });
   });
 
-  const inningScores = match.teams.map(t => ({
-    team: t.name,
-    scores: t.scores.map(v => Number.isFinite(v) ? v : 0),
-    total: t.total || 0
-  }));
-
-  const payload = {
-    teamA: match.teams[0].name,
-    teamB: match.teams[1].name,
-    scoreA: match.teams[0].total || 0,
-    scoreB: match.teams[1].total || 0,
-    innings: match.maxInnings,
-    players,
-    inningScores
-  };
+  const payload = { players };
 
   const btn = document.getElementById('sendBtn');
   btn.disabled = true;
@@ -1538,15 +1523,23 @@ async function sendToSheet() {
   showStatus('送信中...', 'info');
 
   try {
-    // GASはCORSの関係でno-corsで送る
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    // GASはno-corsで送信（レスポンスは読めないが書き込みは成功する）
+    const encoded = encodeURIComponent(JSON.stringify(payload));
+    const getUrl = `${url}?data=${encoded}`;
+
+    // まずGETで試みる（URLが長すぎる場合はPOSTにfallback）
+    if (getUrl.length < 2000) {
+      await fetch(getUrl, { method: 'GET', mode: 'no-cors' });
+    } else {
+      await fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify(payload)
+      });
+    }
+
     showStatus('✅ スプレッドシートに記録しました！', 'success');
-    btn.textContent = '送信完了';
+    btn.textContent = '✅ 送信完了';
     showToast('スプレッドシートに記録しました！', 'score');
   } catch (err) {
     showStatus('❌ 送信失敗：' + err.message, 'error');
