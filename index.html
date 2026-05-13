@@ -1567,12 +1567,12 @@ function openPitcherModal() {
 
     // 相手チームのデータから自動計算
     const opp = match.teams[ti === 0 ? 1 : 0];
-    const autoBf   = saved.bf  !== undefined ? saved.bf  : opp.players.reduce((s, p) => s + (p.pa || 0), 0);
-    const autoH    = saved.h   !== undefined ? saved.h   : opp.players.reduce((s, p) => s + (p.hits || 0), 0);
-    const autoK    = saved.k   !== undefined ? saved.k   : opp.players.reduce((s, p) => s + (p.ks || 0), 0);
-    const autoBb   = saved.bb  !== undefined ? saved.bb  : opp.players.reduce((s, p) => s + (p.walks || 0), 0);
-    const autoR    = saved.r   !== undefined ? saved.r   : (opp.total || 0);
-    const autoEr   = saved.er  !== undefined ? saved.er  : (opp.total || 0); // 初期値は失点と同じ（手動で修正可）
+    const autoBf   = saved.bf   !== undefined ? saved.bf   : opp.players.reduce((s, p) => s + (p.pa || 0), 0);
+    const autoH    = saved.hits !== undefined ? saved.hits : opp.players.reduce((s, p) => s + (p.hits || 0), 0);
+    const autoK    = saved.ks   !== undefined ? saved.ks   : opp.players.reduce((s, p) => s + (p.ks || 0), 0);
+    const autoBb   = saved.walks!== undefined ? saved.walks: opp.players.reduce((s, p) => s + (p.walks || 0), 0);
+    const autoR    = saved.runs !== undefined ? saved.runs : (opp.total || 0);
+    const autoEr   = saved.er   !== undefined ? saved.er   : (opp.total || 0);
     const autoName = saved.name || (t.players[0] ? t.players[0].name : `投手${ti+1}`);
     const autoIp   = saved.ip  || '';
 
@@ -1630,14 +1630,14 @@ function savePitcherInputs() {
     // ERA = 自責点 × 3 ÷ 投球回
     const era = ip > 0 ? ((er * 3) / ip).toFixed(2) : '---';
     match.pitchers[ti] = {
-      name: document.getElementById(`p_name_${ti}`)?.value.trim() || `投手${ti+1}`,
+      name:  document.getElementById(`p_name_${ti}`)?.value.trim() || `投手${ti+1}`,
       ip,
-      bf:  parseInt(document.getElementById(`p_bf_${ti}`)?.value) || 0,
-      r:   parseInt(document.getElementById(`p_r_${ti}`)?.value)  || 0,
+      bf:    parseInt(document.getElementById(`p_bf_${ti}`)?.value)  || 0,
+      runs:  parseInt(document.getElementById(`p_r_${ti}`)?.value)   || 0,
       er,
-      h:   parseInt(document.getElementById(`p_h_${ti}`)?.value)  || 0,
-      k:   parseInt(document.getElementById(`p_k_${ti}`)?.value)  || 0,
-      bb:  parseInt(document.getElementById(`p_bb_${ti}`)?.value) || 0,
+      hits:  parseInt(document.getElementById(`p_h_${ti}`)?.value)   || 0,
+      ks:    parseInt(document.getElementById(`p_k_${ti}`)?.value)   || 0,
+      walks: parseInt(document.getElementById(`p_bb_${ti}`)?.value)  || 0,
       era
     };
   });
