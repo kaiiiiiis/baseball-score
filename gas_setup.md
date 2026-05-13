@@ -101,7 +101,67 @@ function handleRequest(e) {
       sheet.getRange(2, 1, lastRow2 - 1, 12).sort({ column: 12, ascending: false });
     }
 
-    output.setContent(JSON.stringify({ status: 'ok', updated: players.length }));
+    // --- シート「投手成績」---
+    const pitchers = data.pitchers || [];
+    if (pitchers.length > 0) {
+      let pSheet = ss.getSheetByName('投手成績');
+      if (!pSheet) {
+        pSheet = ss.insertSheet('投手成績');
+        pSheet.appendRow([
+          '選手名','試合数','投球回','打者数(BF)','失点','自責点','被安打','三振','四球','防御率(ERA)'
+        ]);
+        pSheet.getRange(1,1,1,10).setFontWeight('bold').setBackground('#166534').setFontColor('#ffffff');
+      }
+
+      pitchers.forEach(p => {
+        if (!p.name) return;
+        const name = p.name;
+        const pLastRow = pSheet.getLastRow();
+        let found = false;
+
+        if (pLastRow >= 2) {
+          const nameCol = pSheet.getRange(2, 1, pLastRow - 1, 1).getValues();
+          for (let i = 0; i < nameCol.length; i++) {
+            if (nameCol[i][0] === name) {
+              const row = i + 2;
+              const ex = pSheet.getRange(row, 1, 1, 10).getValues()[0];
+              const games   = (ex[1] || 0) + 1;
+              const ip      = (ex[2] || 0) + (p.ip || 0);
+              const bf      = (ex[3] || 0) + (p.bf || 0);
+              const runs    = (ex[4] || 0) + (p.runs || 0);
+              const er      = (ex[5] || 0) + (p.er || 0);
+              const hits    = (ex[6] || 0) + (p.hits || 0);
+              const ks      = (ex[7] || 0) + (p.ks || 0);
+              const walks   = (ex[8] || 0) + (p.walks || 0);
+              const era     = ip > 0 ? ((er * 3) / ip).toFixed(2) : '---';
+              pSheet.getRange(row, 1, 1, 10).setValues([[
+                name, games, ip, bf, runs, er, hits, ks, walks, era
+              ]]);
+              found = true;
+              break;
+            }
+          }
+        }
+
+        if (!found) {
+          const ip  = p.ip || 0;
+          const er  = p.er || 0;
+          const era = ip > 0 ? ((er * 3) / ip).toFixed(2) : '---';
+          pSheet.appendRow([
+            name, 1, ip, p.bf||0, p.runs||0, er,
+            p.hits||0, p.ks||0, p.walks||0, era
+          ]);
+        }
+      });
+
+      // ERA昇順ソート
+      const pLast = pSheet.getLastRow();
+      if (pLast >= 3) {
+        pSheet.getRange(2, 1, pLast - 1, 10).sort({ column: 10, ascending: true });
+      }
+    }
+
+    output.setContent(JSON.stringify({ status: 'ok', updated: players.length, pitchers: pitchers.length }));
     return output;
 
   } catch(err) {
@@ -127,3 +187,6 @@ function handleRequest(e) {
 - コードを修正したら「新しいデプロイ」ではなく「デプロイを管理」→「編集」→「バージョン：新しいバージョン」で更新
 - 同じ選手名であれば試合をまたいで累積加算される
 - 打率は毎回（安打÷打数）で再計算
+- 投手成績は「投手成績」シートに別途保存される
+- 防御率(ERA) = 自責点累計 × 3 ÷ 投球回累計（3回制想定）
+- 投球回が0の場合は ERA = `---`
