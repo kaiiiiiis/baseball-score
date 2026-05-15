@@ -1075,26 +1075,19 @@ async function loadFromSheet() {
       return;
     }
 
-    // チームA・B の選手名をテキストエリアに反映
+    // チームA・B の選手名をテキストエリアに反映（不要なので削除）
     const teams = json.teams || {};
-    if (teams.A && teams.A.length) {
-      document.getElementById('teamAPlayersTA').value = teams.A.map(p => p.nickname ? `${p.name},${p.nickname}` : p.name).join('\n');
-      if (teams.Aname) document.getElementById('teamAName').value = teams.Aname;
-    }
-    if (teams.B && teams.B.length) {
-      document.getElementById('teamBPlayersTA').value = teams.B.map(p => p.nickname ? `${p.name},${p.nickname}` : p.name).join('\n');
-      if (teams.Bname) document.getElementById('teamBName').value = teams.Bname;
-    }
 
-    // 人数を自動セット
-    const maxLen = Math.max(teams.A?.length || 0, teams.B?.length || 0);
-    if (maxLen > 0) document.getElementById('lineupSize').value = maxLen;
-
-    // 累積成績をグローバルに保持（試合開始後に適用）
+    // 累積成績・異名をグローバルに保持（試合開始後に適用）
     window._sheetStats = json.stats || {};
+    // 異名マップ: { 選手名: 異名 }
+    window._nicknames = {};
+    Object.entries(window._sheetStats).forEach(([name, s]) => {
+      if (s.nickname) window._nicknames[name] = s.nickname;
+    });
 
-    const total = (teams.A?.length || 0) + (teams.B?.length || 0);
-    showLoadStatus(`✅ ${total}人の選手・成績を読み込みました`, 'success');
+    const total = Object.keys(window._sheetStats).length;
+    showLoadStatus(`✅ ${total}人の成績を読み込みました`, 'success');
   } catch (err) {
     showLoadStatus('読み込み失敗：' + err.message, 'error');
   }
@@ -1520,7 +1513,9 @@ function refreshUI() {
   const p = team.players[pIdx];
   if (p) {
     document.getElementById('currentBatterName').textContent = `${pIdx + 1}. ${p.name}`;
-    document.getElementById('currentBatterNickname').textContent = p.nickname || '';
+    // 異名: p.nickname → _nicknames[名前] → なし の優先順
+    const nick = p.nickname || (window._nicknames && window._nicknames[p.name]) || '';
+    document.getElementById('currentBatterNickname').textContent = nick;
     const avg = totalAvg(p);
     const obp = totalObp(p);
     document.getElementById('currentBatterStats').innerHTML =
