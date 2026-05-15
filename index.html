@@ -986,12 +986,11 @@ function setGasUrl(url) {
 }
 
 // ページ読み込み時にURLを復元
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('load', () => {
   const saved = localStorage.getItem('gasUrl') || '';
   if (saved) {
     const s = document.getElementById('gasUrlSetup');
     if (s) s.value = saved;
-    // URLが保存されていれば自動で読み込む
     loadFromSheet();
   }
 });
