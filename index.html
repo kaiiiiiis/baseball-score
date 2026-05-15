@@ -991,6 +991,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (saved) {
     const s = document.getElementById('gasUrlSetup');
     if (s) s.value = saved;
+    // URLが保存されていれば自動で読み込む
+    loadFromSheet();
   }
 });
 
