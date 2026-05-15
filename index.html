@@ -985,13 +985,12 @@ function setGasUrl(url) {
   if (m) m.value = url;
 }
 
-// ページ読み込み時にURLを復元
+// ページ読み込み時にURLを復元（自動読み込みなし）
 window.addEventListener('load', () => {
   const saved = localStorage.getItem('gasUrl') || '';
   if (saved) {
     const s = document.getElementById('gasUrlSetup');
     if (s) s.value = saved;
-    loadFromSheet();
   }
 });
 
