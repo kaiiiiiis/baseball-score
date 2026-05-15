@@ -1313,6 +1313,7 @@ function startMatch() {
           p._prevWalks   = s.walks   || 0;
           p._prevKs      = s.ks      || 0;
           p._prevRbi     = s.rbi     || 0;
+          if (s.nickname) p.nickname = s.nickname;
         }
       });
     });
