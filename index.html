@@ -978,7 +978,7 @@ function getGasUrl() {
 }
 function setGasUrl(url) {
   if (!url) return;
-  setGasUrl(url);
+  localStorage.setItem('gasUrl', url);
   const s = document.getElementById('gasUrlSetup');
   const m = document.getElementById('gasUrl');
   if (s) s.value = url;
