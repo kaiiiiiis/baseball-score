@@ -313,11 +313,64 @@
   .batter-info {
     background: var(--accent-light);
     border-radius: var(--radius-sm);
-    padding: 8px 10px;
+    padding: 0;
+    perspective: 600px;
+    min-height: 64px;
   }
   .batter-label { font-size: 10px; font-weight: 600; color: var(--accent); margin-bottom: 1px; }
   .batter-name { font-size: 15px; font-weight: 800; color: var(--gray-900); }
   .batter-stats { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+
+  /* flip card */
+  .batter-card {
+    width: 100%;
+    height: 100%;
+    min-height: 64px;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.55s cubic-bezier(.4,0,.2,1);
+    border-radius: var(--radius-sm);
+  }
+  .batter-card.flipped {
+    transform: rotateX(180deg);
+  }
+  .batter-card-face {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .batter-card-front {
+    background: var(--accent-light);
+  }
+  .batter-card-back {
+    background: #e8f0fe;
+    transform: rotateX(180deg);
+  }
+  .batter-nickname {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-top: 2px;
+    font-style: italic;
+  }
+  .batter-back-stats {
+    font-size: 11px;
+    color: var(--gray-700);
+    margin-top: 3px;
+    line-height: 1.5;
+  }
+  .batter-back-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #5c7cfa;
+    margin-bottom: 1px;
+  }
 
   /* Action buttons */
   .action-section {
@@ -689,8 +742,8 @@
           <input class="form-input" id="teamAName" value="チームA" />
         </div>
         <div class="form-group">
-          <label class="form-label">選手（1行に1人）</label>
-          <textarea class="form-textarea" id="teamAPlayersTA" placeholder="山田&#10;佐藤&#10;鈴木"></textarea>
+          <label class="form-label">選手（1行に1人、名前,異名 も可）</label>
+          <textarea class="form-textarea" id="teamAPlayersTA" placeholder="山田,右の大砲&#10;佐藤,鉄壁の守護神&#10;鈴木"></textarea>
         </div>
       </div>
       <div>
@@ -700,8 +753,8 @@
           <input class="form-input" id="teamBName" value="チームB" />
         </div>
         <div class="form-group">
-          <label class="form-label">選手（1行に1人）</label>
-          <textarea class="form-textarea" id="teamBPlayersTA" placeholder="田中&#10;高橋&#10;鈴木"></textarea>
+          <label class="form-label">選手（1行に1人、名前,異名 も可）</label>
+          <textarea class="form-textarea" id="teamBPlayersTA" placeholder="田中,豪快なスイング&#10;高橋&#10;鈴木,安打製造機"></textarea>
         </div>
       </div>
     </div>
@@ -788,11 +841,21 @@
       </div>
     </div>
     <div class="game-status">
-      <!-- Current batter -->
+      <!-- Current batter flip card -->
       <div class="batter-info">
-        <div class="batter-label">打席</div>
-        <div class="batter-name" id="currentBatterName">—</div>
-        <div class="batter-stats" id="currentBatterStats"></div>
+        <div class="batter-card" id="batterFlipCard">
+          <!-- 表: 名前 + 異名 -->
+          <div class="batter-card-face batter-card-front">
+            <div class="batter-label">打席</div>
+            <div class="batter-name" id="currentBatterName">—</div>
+            <div class="batter-nickname" id="currentBatterNickname"></div>
+          </div>
+          <!-- 裏: 通算成績 -->
+          <div class="batter-card-face batter-card-back">
+            <div class="batter-back-label">通算成績</div>
+            <div class="batter-back-stats" id="currentBatterStats"></div>
+          </div>
+        </div>
       </div>
       <!-- Count -->
       <div class="count-row">
@@ -1015,11 +1078,11 @@ async function loadFromSheet() {
     // チームA・B の選手名をテキストエリアに反映
     const teams = json.teams || {};
     if (teams.A && teams.A.length) {
-      document.getElementById('teamAPlayersTA').value = teams.A.map(p => p.name).join('\n');
+      document.getElementById('teamAPlayersTA').value = teams.A.map(p => p.nickname ? `${p.name},${p.nickname}` : p.name).join('\n');
       if (teams.Aname) document.getElementById('teamAName').value = teams.Aname;
     }
     if (teams.B && teams.B.length) {
-      document.getElementById('teamBPlayersTA').value = teams.B.map(p => p.name).join('\n');
+      document.getElementById('teamBPlayersTA').value = teams.B.map(p => p.nickname ? `${p.name},${p.nickname}` : p.name).join('\n');
       if (teams.Bname) document.getElementById('teamBName').value = teams.Bname;
     }
 
@@ -1084,13 +1147,20 @@ function showToast(msg, type = '') {
 }
 
 /* ========== PLAYER / TEAM FACTORIES ========== */
-function makePlayer(name) {
-  return { name, pa:0, ab:0, hits:0, doubles:0, triples:0, hrs:0, ks:0, walks:0, rbi:0 };
+function makePlayer(nameOrObj) {
+  if (typeof nameOrObj === 'object' && nameOrObj !== null) {
+    const { name, nickname } = nameOrObj;
+    return { name, nickname: nickname || '', pa:0, ab:0, hits:0, doubles:0, triples:0, hrs:0, ks:0, walks:0, rbi:0 };
+  }
+  return { name: nameOrObj, nickname: '', pa:0, ab:0, hits:0, doubles:0, triples:0, hrs:0, ks:0, walks:0, rbi:0 };
 }
 function parsePlayersFromTA(text, lineupSize) {
   const lines = (text || '').split('\n').map(s => s.trim()).filter(Boolean);
-  const arr = lines.slice(0, lineupSize);
-  for (let i = arr.length; i < lineupSize; i++) arr.push(`選手${i+1}`);
+  const arr = lines.slice(0, lineupSize).map(line => {
+    const [name, nickname] = line.split(',').map(s => s.trim());
+    return { name: name || line, nickname: nickname || '' };
+  });
+  for (let i = arr.length; i < lineupSize; i++) arr.push({ name: `選手${i+1}`, nickname: '' });
   return arr;
 }
 function createTeam(name, playersArr, maxI) {
@@ -1394,13 +1464,31 @@ function resetAll() {
 }
 function loadExample() {
   document.getElementById('teamAName').value = 'ハルカ組';
-  document.getElementById('teamAPlayersTA').value = 'ハルカ\nレン\nサトウ\nナオ';
+  document.getElementById('teamAPlayersTA').value = 'ハルカ,右の大砲\nレン,安打製造機\nサトウ,鉄壁の守護神\nナオ,豪快なスイング';
   document.getElementById('teamBName').value = '青空';
-  document.getElementById('teamBPlayersTA').value = 'タカ\nユウ\nシン\nマコト';
+  document.getElementById('teamBPlayersTA').value = 'タカ,電光石火\nユウ,沈黙の一撃\nシン,疾風の走者\nマコト,鋼の意志';
   document.getElementById('lineupSize').value = 4;
   document.getElementById('maxInnings').value = '3';
   document.getElementById('outsToChange').value = '3';
   showToast('例データを読み込みました');
+}
+
+/* ========== BATTER FLIP CARD ========== */
+let _batterFlipTimer = null;
+let _batterFlipState = false; // false=表, true=裏
+
+function resetBatterFlip() {
+  // 表面に戻す
+  _batterFlipState = false;
+  const card = document.getElementById('batterFlipCard');
+  if (card) card.classList.remove('flipped');
+  // タイマーリセット
+  if (_batterFlipTimer) clearInterval(_batterFlipTimer);
+  _batterFlipTimer = setInterval(() => {
+    _batterFlipState = !_batterFlipState;
+    const c = document.getElementById('batterFlipCard');
+    if (c) c.classList.toggle('flipped', _batterFlipState);
+  }, 4000);
 }
 
 /* ========== REFRESH UI ========== */
@@ -1431,10 +1519,13 @@ function refreshUI() {
   const p = team.players[pIdx];
   if (p) {
     document.getElementById('currentBatterName').textContent = `${pIdx + 1}. ${p.name}`;
+    document.getElementById('currentBatterNickname').textContent = p.nickname || '';
     const avg = totalAvg(p);
     const obp = totalObp(p);
-    document.getElementById('currentBatterStats').textContent =
-      `打率 ${avg}　出塁率 ${obp}　${totalVal(p,'hits')}H ${totalVal(p,'rbi')}RBI ${totalVal(p,'hrs')}HR`;
+    document.getElementById('currentBatterStats').innerHTML =
+      `打率 <b>${avg}</b>　出塁率 <b>${obp}</b><br>${totalVal(p,'hits')}安打　${totalVal(p,'hrs')}HR　${totalVal(p,'rbi')}打点`;
+    // カードを表面に戻してタイマーリセット
+    resetBatterFlip();
   }
 
   refreshCountDots();
