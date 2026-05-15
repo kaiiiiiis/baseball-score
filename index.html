@@ -1061,6 +1061,21 @@ function calcObp(hits, walks, pa) {
   const v = (hits + walks) / pa;
   return '.' + String(Math.round(v * 1000)).padStart(3, '0');
 }
+// 累積成績込みの値を返す
+function totalVal(p, key) {
+  return (p[key] || 0) + (p['_prev' + key.charAt(0).toUpperCase() + key.slice(1)] || 0);
+}
+function totalAvg(p) {
+  const ab = totalVal(p, 'ab');
+  const hits = totalVal(p, 'hits');
+  return calcAvg(hits, ab);
+}
+function totalObp(p) {
+  const pa = totalVal(p, 'pa');
+  const hits = totalVal(p, 'hits');
+  const walks = totalVal(p, 'walks');
+  return calcObp(hits, walks, pa);
+}
 
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
@@ -1417,10 +1432,10 @@ function refreshUI() {
   const p = team.players[pIdx];
   if (p) {
     document.getElementById('currentBatterName').textContent = `${pIdx + 1}. ${p.name}`;
-    const avg = calcAvg(p.hits, p.ab);
-    const obp = calcObp(p.hits, p.walks, p.pa);
+    const avg = totalAvg(p);
+    const obp = totalObp(p);
     document.getElementById('currentBatterStats').textContent =
-      `打率 ${avg}　出塁率 ${obp}　${p.hits}H ${p.rbi}RBI ${p.hrs}HR`;
+      `打率 ${avg}　出塁率 ${obp}　${totalVal(p,'hits')}H ${totalVal(p,'rbi')}RBI ${totalVal(p,'hrs')}HR`;
   }
 
   refreshCountDots();
@@ -1470,7 +1485,7 @@ function buildLineups() {
       </div>`;
     t.players.forEach((p, idx) => {
       const isCurrent = (match.currentTeam === ti) && ((t.battingIndex % t.players.length) === idx);
-      const avg = calcAvg(p.hits, p.ab);
+      const avg = totalAvg(p);
       const el = document.createElement('div');
       el.className = 'player-row' + (isCurrent ? ' current' : '');
       el.innerHTML = `
@@ -1478,10 +1493,10 @@ function buildLineups() {
         <div class="player-name" onclick="openRenameModal(${ti},${idx})" style="cursor:pointer;" title="タップして名前変更">${escapeHtml(p.name)} <span style="font-size:10px;color:var(--gray-400);">✎</span></div>
         <div class="player-stats-row">
           <span class="stat-chip avg">${avg}</span>
-          <span class="stat-chip">${p.pa}PA</span>
-          <span class="stat-chip">${p.hits}H</span>
-          <span class="stat-chip">${p.rbi}RBI</span>
-          ${p.hrs > 0 ? `<span class="stat-chip">HR×${p.hrs}</span>` : ''}
+          <span class="stat-chip">${totalVal(p,'pa')}PA</span>
+          <span class="stat-chip">${totalVal(p,'hits')}H</span>
+          <span class="stat-chip">${totalVal(p,'rbi')}RBI</span>
+          ${totalVal(p,'hrs') > 0 ? `<span class="stat-chip">HR×${totalVal(p,'hrs')}</span>` : ''}
         </div>`;
       div.appendChild(el);
     });
@@ -1501,13 +1516,13 @@ function buildStatsTable() {
   match.teams.forEach(t => {
     html += `<tr class="team-header"><td colspan="12">${escapeHtml(t.name)}</td></tr>`;
     t.players.forEach(p => {
-      const avg = calcAvg(p.hits, p.ab);
-      const obp = calcObp(p.hits, p.walks, p.pa);
+      const avg = totalAvg(p);
+      const obp = totalObp(p);
       html += `<tr>
         <td>${escapeHtml(p.name)}</td>
-        <td>${p.pa||0}</td><td>${p.ab||0}</td><td>${p.hits||0}</td>
-        <td>${p.doubles||0}</td><td>${p.triples||0}</td><td>${p.hrs||0}</td>
-        <td>${p.ks||0}</td><td>${p.walks||0}</td><td>${p.rbi||0}</td>
+        <td>${totalVal(p,'pa')}</td><td>${totalVal(p,'ab')}</td><td>${totalVal(p,'hits')}</td>
+        <td>${totalVal(p,'doubles')}</td><td>${totalVal(p,'triples')}</td><td>${totalVal(p,'hrs')}</td>
+        <td>${totalVal(p,'ks')}</td><td>${totalVal(p,'walks')}</td><td>${totalVal(p,'rbi')}</td>
         <td class="avg-cell">${avg}</td><td class="avg-cell">${obp}</td>
       </tr>`;
     });
@@ -1583,7 +1598,7 @@ function showResult() {
   // HR list
   const hrList = [];
   match.teams.forEach(t => {
-    t.players.forEach(p => { if (p.hrs > 0) hrList.push(`${p.name}（${t.name}）×${p.hrs}`); });
+    t.players.forEach(p => { if (totalVal(p,'hrs') > 0) hrList.push(`${p.name}（${t.name}）×${totalVal(p,'hrs')}`); });
   });
   if (hrList.length) {
     html += `<div class="section-h">本塁打</div>`;
@@ -1601,10 +1616,10 @@ function showResult() {
     t.players.forEach(p => {
       html += `<tr>
         <td>${escapeHtml(p.name)}</td>
-        <td>${p.pa||0}</td><td>${p.hits||0}</td><td>${p.hrs||0}</td>
-        <td>${p.rbi||0}</td><td>${p.walks||0}</td><td>${p.ks||0}</td>
-        <td class="avg-cell">${calcAvg(p.hits, p.ab)}</td>
-        <td class="avg-cell">${calcObp(p.hits, p.walks, p.pa)}</td>
+        <td>${totalVal(p,'pa')}</td><td>${totalVal(p,'hits')}</td><td>${totalVal(p,'hrs')}</td>
+        <td>${totalVal(p,'rbi')}</td><td>${totalVal(p,'walks')}</td><td>${totalVal(p,'ks')}</td>
+        <td class="avg-cell">${totalAvg(p)}</td>
+        <td class="avg-cell">${totalObp(p)}</td>
       </tr>`;
     });
   });
