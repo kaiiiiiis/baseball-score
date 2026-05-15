@@ -738,6 +738,16 @@
     </div>
   </div>
 
+  <div class="card">
+    <div class="card-title">スプレッドシート連携</div>
+    <div class="form-group">
+      <label class="form-label">Apps Script URL（GAS）</label>
+      <input class="form-input" id="gasUrlSetup" placeholder="https://script.google.com/macros/s/.../exec" />
+    </div>
+    <div id="loadStatus" style="display:none;font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:8px;"></div>
+    <button class="btn btn-outline btn-full" onclick="loadFromSheet()">📥 スプレッドシートから選手・成績を読み込む</button>
+  </div>
+
   <div style="margin: 0 16px; display: flex; flex-direction: column; gap: 8px;">
     <button class="btn btn-primary btn-full btn-lg" onclick="startMatch()">⚾ 試合開始</button>
     <button class="btn btn-ghost btn-full" onclick="loadExample()">例データを読み込む</button>
@@ -957,8 +967,83 @@
 let match = null;
 let historyStack = [];
 let currentTab = 'board';
-// count state (display only)
 let count = { strikes: 0, balls: 0 };
+
+/* ========== GAS URL 共有管理 ========== */
+function getGasUrl() {
+  // セットアップ画面の入力 → シートモーダルの入力 → localStorage の優先順
+  const fromSetup = document.getElementById('gasUrlSetup')?.value.trim();
+  const fromModal = document.getElementById('gasUrl')?.value.trim();
+  return fromSetup || fromModal || localStorage.getItem('gasUrl') || '';
+}
+function setGasUrl(url) {
+  if (!url) return;
+  setGasUrl(url);
+  const s = document.getElementById('gasUrlSetup');
+  const m = document.getElementById('gasUrl');
+  if (s) s.value = url;
+  if (m) m.value = url;
+}
+
+// ページ読み込み時にURLを復元
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('gasUrl') || '';
+  if (saved) {
+    const s = document.getElementById('gasUrlSetup');
+    if (s) s.value = saved;
+  }
+});
+
+/* ========== スプレッドシートから読み込み ========== */
+async function loadFromSheet() {
+  const url = getGasUrl();
+  if (!url) {
+    showLoadStatus('URLを入力してください', 'error');
+    return;
+  }
+  setGasUrl(url);
+  showLoadStatus('読み込み中...', 'info');
+
+  try {
+    const res = await fetch(`${url}?action=load`, { method: 'GET' });
+    const json = await res.json();
+    if (json.status !== 'ok') {
+      showLoadStatus('読み込み失敗：' + (json.message || 'エラー'), 'error');
+      return;
+    }
+
+    // チームA・B の選手名をテキストエリアに反映
+    const teams = json.teams || {};
+    if (teams.A && teams.A.length) {
+      document.getElementById('teamAPlayersTA').value = teams.A.map(p => p.name).join('\n');
+      if (teams.Aname) document.getElementById('teamAName').value = teams.Aname;
+    }
+    if (teams.B && teams.B.length) {
+      document.getElementById('teamBPlayersTA').value = teams.B.map(p => p.name).join('\n');
+      if (teams.Bname) document.getElementById('teamBName').value = teams.Bname;
+    }
+
+    // 人数を自動セット
+    const maxLen = Math.max(teams.A?.length || 0, teams.B?.length || 0);
+    if (maxLen > 0) document.getElementById('lineupSize').value = maxLen;
+
+    // 累積成績をグローバルに保持（試合開始後に適用）
+    window._sheetStats = json.stats || {};
+
+    const total = (teams.A?.length || 0) + (teams.B?.length || 0);
+    showLoadStatus(`✅ ${total}人の選手・成績を読み込みました`, 'success');
+  } catch (err) {
+    showLoadStatus('読み込み失敗：' + err.message, 'error');
+  }
+}
+
+function showLoadStatus(msg, type) {
+  const el = document.getElementById('loadStatus');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.background = type === 'success' ? '#f0fdf4' : type === 'error' ? '#fef2f2' : '#eff6ff';
+  el.style.color = type === 'success' ? '#15803d' : type === 'error' ? '#dc2626' : '#1d4ed8';
+}
 
 /* ========== HELPERS ========== */
 function escapeHtml(s) {
@@ -1126,6 +1211,28 @@ function startMatch() {
     finished: false,
     log: []
   };
+
+  // スプレッドシートから読み込んだ累積成績を適用
+  if (window._sheetStats) {
+    match.teams.forEach(t => {
+      t.players.forEach(p => {
+        const s = window._sheetStats[p.name];
+        if (s) {
+          p._prevGames   = s.games   || 0;
+          p._prevPa      = s.pa      || 0;
+          p._prevAb      = s.ab      || 0;
+          p._prevHits    = s.hits    || 0;
+          p._prevDoubles = s.doubles || 0;
+          p._prevTriples = s.triples || 0;
+          p._prevHrs     = s.hrs     || 0;
+          p._prevWalks   = s.walks   || 0;
+          p._prevKs      = s.ks      || 0;
+          p._prevRbi     = s.rbi     || 0;
+        }
+      });
+    });
+  }
+
   recalcTotals();
   historyStack = [];
   count = { strikes: 0, balls: 0 };
@@ -1645,7 +1752,7 @@ function savePitcherInputs() {
 
 /* ========== SHEET MODAL ========== */
 function openSheetModal() {
-  const saved = localStorage.getItem('gasUrl') || '';
+  const saved = getGasUrl();
   document.getElementById('gasUrl').value = saved;
   document.getElementById('sheetStatus').style.display = 'none';
   document.getElementById('sendBtn').disabled = false;
@@ -1661,14 +1768,16 @@ async function sendToSheet() {
   const url = document.getElementById('gasUrl').value.trim();
   if (!url) { showStatus('URLを入力してください', 'error'); return; }
 
-  localStorage.setItem('gasUrl', url);
+  setGasUrl(url);
   ensureScoresLength();
   recalcTotals();
 
-  // ペイロード組み立て（選手成績：打率降順ソート）
+  // ペイロード組み立て（選手成績：打率降順ソート・選手Xは除外）
   const players = [];
   match.teams.forEach(t => {
     t.players.forEach(p => {
+      // 「選手1」「選手2」…のような自動補完名は送信しない
+      if (/^選手\d+$/.test(p.name)) return;
       const ab = p.ab || 0;
       const hits = p.hits || 0;
       players.push({

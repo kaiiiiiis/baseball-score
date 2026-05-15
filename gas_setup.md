@@ -17,11 +17,48 @@ function doPost(e) {
 }
 
 function handleRequest(e) {
-  // CORSヘッダー対応
   const output = ContentService.createTextOutput();
   output.setMimeType(ContentService.MimeType.JSON);
 
   try {
+    // --- action=load：スプレッドシートから選手・成績を返す ---
+    if (e.parameter && e.parameter.action === 'load') {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName('選手成績');
+      const stats = {};
+      const teams = { A: [], B: [], Aname: '', Bname: '' };
+
+      if (sheet && sheet.getLastRow() >= 2) {
+        const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 13).getValues();
+        rows.forEach(r => {
+          const name = r[0];
+          if (!name || /^選手\d+$/.test(name)) return;
+          const teamLabel = r[12] || ''; // 13列目にチーム情報があれば使う
+          stats[name] = {
+            games:   r[1]  || 0,
+            pa:      r[2]  || 0,
+            ab:      r[3]  || 0,
+            hits:    r[4]  || 0,
+            doubles: r[5]  || 0,
+            triples: r[6]  || 0,
+            hrs:     r[7]  || 0,
+            walks:   r[8]  || 0,
+            ks:      r[9]  || 0,
+            rbi:     r[10] || 0,
+            avg:     r[11] || '.000'
+          };
+          // チーム列があればA/Bに振り分け
+          if (teamLabel === 'A') teams.A.push({ name });
+          else if (teamLabel === 'B') teams.B.push({ name });
+          else teams.A.push({ name }); // チーム列なければ全員Aに（手動で選手欄に貼る用）
+        });
+      }
+
+      output.setContent(JSON.stringify({ status: 'ok', stats, teams }));
+      return output;
+    }
+
+    // --- 通常の記録処理 ---
     let data;
     if (e.postData) {
       data = JSON.parse(e.postData.contents);
@@ -42,23 +79,23 @@ function handleRequest(e) {
         '選手名','試合数','打席(PA)','打数(AB)','安打(H)',
         '二塁打','三塁打','本塁打','四球(BB)','三振(K)','打点(RBI)','打率'
       ]);
-      // ヘッダー行の書式設定
       sheet.getRange(1,1,1,12).setFontWeight('bold').setBackground('#1d4ed8').setFontColor('#ffffff');
     }
 
     const players = data.players || [];
 
     players.forEach(p => {
+      // 「選手1」「選手2」…のような自動補完名は記録しない
+      if (!p.name || /^選手\d+$/.test(p.name)) return;
+
       const name = p.name;
       const lastRow = sheet.getLastRow();
       let found = false;
 
-      // 既存の選手を検索（2行目以降）
       if (lastRow >= 2) {
         const nameCol = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
         for (let i = 0; i < nameCol.length; i++) {
           if (nameCol[i][0] === name) {
-            // 既存行を加算更新
             const row = i + 2;
             const existing = sheet.getRange(row, 1, 1, 12).getValues()[0];
             const games   = (existing[1] || 0) + 1;
@@ -83,10 +120,9 @@ function handleRequest(e) {
       }
 
       if (!found) {
-        // 新規追加
-        const ab  = p.ab || 0;
+        const ab   = p.ab || 0;
         const hits = p.hits || 0;
-        const avg = ab > 0 ? (hits / ab).toFixed(3) : '.000';
+        const avg  = ab > 0 ? (hits / ab).toFixed(3) : '.000';
         sheet.appendRow([
           name, 1, p.pa||0, ab, hits,
           p.doubles||0, p.triples||0, p.hrs||0,
@@ -95,7 +131,7 @@ function handleRequest(e) {
       }
     });
 
-    // 打率でソート（降順）
+    // 打率降順ソート
     const lastRow2 = sheet.getLastRow();
     if (lastRow2 >= 3) {
       sheet.getRange(2, 1, lastRow2 - 1, 12).sort({ column: 12, ascending: false });
@@ -108,13 +144,13 @@ function handleRequest(e) {
       if (!pSheet) {
         pSheet = ss.insertSheet('投手成績');
         pSheet.appendRow([
-          '選手名','試合数','投球回','打者数(BF)','失点','自責点','被安打','三振','四球','防御率(ERA)'
+          '選手名','試合数','投球回','打者数(BF)','失点','自責点','被安打','三振','四球','防御率(ERA)','奪三振率(K/IP)'
         ]);
-        pSheet.getRange(1,1,1,10).setFontWeight('bold').setBackground('#166534').setFontColor('#ffffff');
+        pSheet.getRange(1,1,1,11).setFontWeight('bold').setBackground('#166534').setFontColor('#ffffff');
       }
 
       pitchers.forEach(p => {
-        if (!p.name) return;
+        if (!p.name || /^投手\d+$/.test(p.name)) return;
         const name = p.name;
         const pLastRow = pSheet.getLastRow();
         let found = false;
@@ -124,18 +160,19 @@ function handleRequest(e) {
           for (let i = 0; i < nameCol.length; i++) {
             if (nameCol[i][0] === name) {
               const row = i + 2;
-              const ex = pSheet.getRange(row, 1, 1, 10).getValues()[0];
-              const games   = (ex[1] || 0) + 1;
-              const ip      = (ex[2] || 0) + (p.ip || 0);
-              const bf      = (ex[3] || 0) + (p.bf || 0);
-              const runs    = (ex[4] || 0) + (p.runs || 0);
-              const er      = (ex[5] || 0) + (p.er || 0);
-              const hits    = (ex[6] || 0) + (p.hits || 0);
-              const ks      = (ex[7] || 0) + (p.ks || 0);
-              const walks   = (ex[8] || 0) + (p.walks || 0);
-              const era     = ip > 0 ? ((er * 3) / ip).toFixed(2) : '---';
-              pSheet.getRange(row, 1, 1, 10).setValues([[
-                name, games, ip, bf, runs, er, hits, ks, walks, era
+              const ex    = pSheet.getRange(row, 1, 1, 11).getValues()[0];
+              const games = (ex[1] || 0) + 1;
+              const ip    = (ex[2] || 0) + (p.ip || 0);
+              const bf    = (ex[3] || 0) + (p.bf || 0);
+              const runs  = (ex[4] || 0) + (p.runs || 0);
+              const er    = (ex[5] || 0) + (p.er || 0);
+              const hits  = (ex[6] || 0) + (p.hits || 0);
+              const ks    = (ex[7] || 0) + (p.ks || 0);
+              const walks = (ex[8] || 0) + (p.walks || 0);
+              const era   = ip > 0 ? ((er * 3) / ip).toFixed(2) : '---';
+              const kip   = ip > 0 ? ((ks * 3) / ip).toFixed(2) : '---'; // 奪三振率
+              pSheet.getRange(row, 1, 1, 11).setValues([[
+                name, games, ip, bf, runs, er, hits, ks, walks, era, kip
               ]]);
               found = true;
               break;
@@ -144,12 +181,14 @@ function handleRequest(e) {
         }
 
         if (!found) {
-          const ip  = p.ip || 0;
-          const er  = p.er || 0;
-          const era = ip > 0 ? ((er * 3) / ip).toFixed(2) : '---';
+          const ip    = p.ip || 0;
+          const er    = p.er || 0;
+          const ks    = p.ks || 0;
+          const era   = ip > 0 ? ((er * 3) / ip).toFixed(2) : '---';
+          const kip   = ip > 0 ? ((ks * 3) / ip).toFixed(2) : '---';
           pSheet.appendRow([
             name, 1, ip, p.bf||0, p.runs||0, er,
-            p.hits||0, p.ks||0, p.walks||0, era
+            p.hits||0, ks, p.walks||0, era, kip
           ]);
         }
       });
@@ -157,7 +196,7 @@ function handleRequest(e) {
       // ERA昇順ソート
       const pLast = pSheet.getLastRow();
       if (pLast >= 3) {
-        pSheet.getRange(2, 1, pLast - 1, 10).sort({ column: 10, ascending: true });
+        pSheet.getRange(2, 1, pLast - 1, 11).sort({ column: 10, ascending: true });
       }
     }
 
@@ -181,12 +220,14 @@ function handleRequest(e) {
 
 ## 4. URLをアプリに設定
 コピーした URL（https://script.google.com/macros/s/.../exec）を
-アプリの「スプレッドシートに記録する」ボタン → 入力欄に貼り付けて送信
+アプリのトップ画面「スプレッドシート連携」欄に貼り付ける
 
 ## 注意
 - コードを修正したら「新しいデプロイ」ではなく「デプロイを管理」→「編集」→「バージョン：新しいバージョン」で更新
 - 同じ選手名であれば試合をまたいで累積加算される
 - 打率は毎回（安打÷打数）で再計算
+- 「選手1」「選手2」のような名前未入力の選手は記録されない
 - 投手成績は「投手成績」シートに別途保存される
 - 防御率(ERA) = 自責点累計 × 3 ÷ 投球回累計（3回制想定）
-- 投球回が0の場合は ERA = `---`
+- 奪三振率(K/IP) = 三振累計 × 3 ÷ 投球回累計（3回制想定）
+- 投球回が0の場合は ERA・K/IP = `---`
