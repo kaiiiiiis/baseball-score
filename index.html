@@ -941,12 +941,262 @@
   .overlay-box::-webkit-scrollbar { width: 4px; }
   .overlay-box::-webkit-scrollbar-track { background: transparent; }
   .overlay-box::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+
+  /* ========== TV TELOP EFFECTS ========== */
+  .telop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 8000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .telop-overlay.show { opacity: 1; }
+
+  /* Dark vignette background */
+  .telop-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.8) 100%);
+  }
+
+  /* Main telop container */
+  .telop-box {
+    position: relative;
+    width: 92%;
+    max-width: 420px;
+    text-align: center;
+  }
+
+  /* Top accent line */
+  .telop-line-top, .telop-line-bottom {
+    height: 3px;
+    border-radius: 2px;
+    transform: scaleX(0);
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .telop-overlay.show .telop-line-top,
+  .telop-overlay.show .telop-line-bottom {
+    transform: scaleX(1);
+  }
+
+  /* Telop content band */
+  .telop-band {
+    padding: 18px 20px 14px;
+    margin: 0;
+    transform: scaleY(0);
+    transform-origin: center;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.1s;
+  }
+  .telop-overlay.show .telop-band {
+    transform: scaleY(1);
+  }
+
+  .telop-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 6px;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: all 0.3s ease 0.3s;
+  }
+  .telop-overlay.show .telop-label {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .telop-main {
+    font-size: 32px;
+    font-weight: 900;
+    font-family: 'Noto Sans JP', sans-serif;
+    line-height: 1.2;
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.35s;
+  }
+  .telop-overlay.show .telop-main {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .telop-sub {
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 6px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.3s ease 0.45s;
+  }
+  .telop-overlay.show .telop-sub {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ---- Theme: HOME RUN ---- */
+  .telop-hr .telop-line-top,
+  .telop-hr .telop-line-bottom {
+    background: linear-gradient(90deg, transparent, #ef4444, #f59e0b, #ef4444, transparent);
+    box-shadow: 0 0 16px rgba(239,68,68,0.6);
+  }
+  .telop-hr .telop-band {
+    background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(245,158,11,0.15));
+    border-left: 4px solid #ef4444;
+    border-right: 4px solid #ef4444;
+  }
+  .telop-hr .telop-label { color: #fbbf24; }
+  .telop-hr .telop-main { color: #fff; text-shadow: 0 0 30px rgba(239,68,68,0.8), 0 2px 8px rgba(0,0,0,0.5); }
+  .telop-hr .telop-sub { color: #fca5a5; }
+
+  /* ---- Theme: TRIPLE ---- */
+  .telop-3b .telop-line-top,
+  .telop-3b .telop-line-bottom {
+    background: linear-gradient(90deg, transparent, #f59e0b, #fbbf24, #f59e0b, transparent);
+    box-shadow: 0 0 12px rgba(245,158,11,0.5);
+  }
+  .telop-3b .telop-band {
+    background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(251,191,36,0.1));
+    border-left: 4px solid #f59e0b;
+    border-right: 4px solid #f59e0b;
+  }
+  .telop-3b .telop-label { color: #fbbf24; }
+  .telop-3b .telop-main { color: #fff; text-shadow: 0 0 20px rgba(245,158,11,0.6); }
+  .telop-3b .telop-sub { color: #fde68a; }
+
+  /* ---- Theme: DOUBLE ---- */
+  .telop-2b .telop-line-top,
+  .telop-2b .telop-line-bottom {
+    background: linear-gradient(90deg, transparent, #10b981, #34d399, #10b981, transparent);
+    box-shadow: 0 0 12px rgba(16,185,129,0.5);
+  }
+  .telop-2b .telop-band {
+    background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(52,211,153,0.1));
+    border-left: 4px solid #10b981;
+    border-right: 4px solid #10b981;
+  }
+  .telop-2b .telop-label { color: #34d399; }
+  .telop-2b .telop-main { color: #fff; text-shadow: 0 0 20px rgba(16,185,129,0.6); }
+  .telop-2b .telop-sub { color: #a7f3d0; }
+
+  /* ---- Theme: HIT (single) ---- */
+  .telop-1b .telop-line-top,
+  .telop-1b .telop-line-bottom {
+    background: linear-gradient(90deg, transparent, #06b6d4, #22d3ee, #06b6d4, transparent);
+    box-shadow: 0 0 10px rgba(6,182,212,0.4);
+  }
+  .telop-1b .telop-band {
+    background: linear-gradient(135deg, rgba(6,182,212,0.18), rgba(34,211,238,0.08));
+    border-left: 3px solid #06b6d4;
+    border-right: 3px solid #06b6d4;
+  }
+  .telop-1b .telop-label { color: #22d3ee; }
+  .telop-1b .telop-main { color: #fff; text-shadow: 0 0 16px rgba(6,182,212,0.5); }
+  .telop-1b .telop-sub { color: #a5f3fc; }
+
+  /* ---- Theme: STRIKEOUT ---- */
+  .telop-k .telop-line-top,
+  .telop-k .telop-line-bottom {
+    background: linear-gradient(90deg, transparent, #6b7280, #9ca3af, #6b7280, transparent);
+    box-shadow: 0 0 8px rgba(107,114,128,0.4);
+  }
+  .telop-k .telop-band {
+    background: linear-gradient(135deg, rgba(107,114,128,0.2), rgba(156,163,175,0.08));
+    border-left: 3px solid #6b7280;
+    border-right: 3px solid #6b7280;
+  }
+  .telop-k .telop-label { color: #ef4444; }
+  .telop-k .telop-main { color: #d1d5db; text-shadow: 0 0 12px rgba(107,114,128,0.4); font-size: 28px; }
+  .telop-k .telop-sub { color: #9ca3af; }
+
+  /* ---- Theme: WIN ---- */
+  .telop-win .telop-line-top,
+  .telop-win .telop-line-bottom {
+    background: linear-gradient(90deg, transparent, #fbbf24, #f59e0b, #fbbf24, transparent);
+    box-shadow: 0 0 20px rgba(251,191,36,0.6);
+    height: 4px;
+  }
+  .telop-win .telop-band {
+    background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(245,158,11,0.1), rgba(168,85,247,0.1));
+    border-left: 4px solid #fbbf24;
+    border-right: 4px solid #fbbf24;
+    padding: 24px 20px 20px;
+  }
+  .telop-win .telop-label { color: #fbbf24; font-size: 13px; letter-spacing: 4px; }
+  .telop-win .telop-main { color: #fff; text-shadow: 0 0 30px rgba(251,191,36,0.6), 0 2px 8px rgba(0,0,0,0.5); font-size: 36px; }
+  .telop-win .telop-sub { color: #fde68a; font-size: 16px; }
+
+  /* ---- Theme: LOSE ---- */
+  .telop-lose .telop-line-top,
+  .telop-lose .telop-line-bottom {
+    background: linear-gradient(90deg, transparent, #475569, #64748b, #475569, transparent);
+    box-shadow: 0 0 8px rgba(71,85,105,0.4);
+  }
+  .telop-lose .telop-band {
+    background: linear-gradient(135deg, rgba(71,85,105,0.25), rgba(100,116,139,0.1));
+    border-left: 4px solid #475569;
+    border-right: 4px solid #475569;
+    padding: 24px 20px 20px;
+  }
+  .telop-lose .telop-label { color: #94a3b8; font-size: 13px; }
+  .telop-lose .telop-main { color: #cbd5e1; text-shadow: 0 0 12px rgba(100,116,139,0.4); font-size: 28px; }
+  .telop-lose .telop-sub { color: #64748b; font-size: 16px; }
+
+  /* Particles for HR */
+  .telop-particles {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .telop-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    animation: telop-spark 1.2s ease-out forwards;
+  }
+  @keyframes telop-spark {
+    0% { opacity: 1; transform: translate(0,0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+  }
+
+  /* Flash effect for HR */
+  .telop-flash {
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    animation: telop-flash-anim 0.4s ease-out;
+  }
+  @keyframes telop-flash-anim {
+    0% { opacity: 0.7; }
+    100% { opacity: 0; }
+  }
 </style>
 </head>
 <body>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<!-- TV TELOP OVERLAY -->
+<div class="telop-overlay" id="telopOverlay">
+  <div class="telop-bg"></div>
+  <div class="telop-box" id="telopBox">
+    <div class="telop-line-top"></div>
+    <div class="telop-band">
+      <div class="telop-label" id="telopLabel"></div>
+      <div class="telop-main" id="telopMain"></div>
+      <div class="telop-sub" id="telopSub"></div>
+    </div>
+    <div class="telop-line-bottom"></div>
+  </div>
+</div>
 
 <!-- HEADER -->
 <header class="app-header">
@@ -1605,6 +1855,7 @@ function doResult(code) {
     team.outs++;
     addLog(`${player.name} が三振`);
     showToast(`${player.name} 三振 K`);
+    showTelop('k', 'STRIKEOUT', player.name, '三振', 1800);
   } else if (code === 'BB') {
     player.walks = (player.walks || 0) + 1;
     const runs = processWalk(team, pIndex);
@@ -1624,11 +1875,13 @@ function doResult(code) {
     player.hits = (player.hits || 0) + 1;
     let runs = 0;
     let hitLabel = '';
-    if (code === '1B') { runs = advanceOnHit(team, '1B', pIndex); hitLabel = '1塁打'; }
-    if (code === '2B') { player.doubles++; runs = advanceOnHit(team, '2B', pIndex); hitLabel = '2塁打'; }
-    if (code === '3B') { player.triples++; runs = advanceOnHit(team, '3B', pIndex); hitLabel = '3塁打'; }
-    if (code === 'HR') { player.hrs++; runs = advanceOnHit(team, 'HR', pIndex); hitLabel = '本塁打🔴'; }
+    let telopType = '';
+    if (code === '1B') { runs = advanceOnHit(team, '1B', pIndex); hitLabel = '1塁打'; telopType = '1b'; }
+    if (code === '2B') { player.doubles++; runs = advanceOnHit(team, '2B', pIndex); hitLabel = '2塁打'; telopType = '2b'; }
+    if (code === '3B') { player.triples++; runs = advanceOnHit(team, '3B', pIndex); hitLabel = '3塁打'; telopType = '3b'; }
+    if (code === 'HR') { player.hrs++; runs = advanceOnHit(team, 'HR', pIndex); hitLabel = '本塁打🔴'; telopType = 'hr'; }
     addLog(`${player.name} ${hitLabel}`, runs > 0);
+    const telopLabels = { '1b': 'HIT', '2b': 'DOUBLE', '3b': 'TRIPLE', 'hr': 'HOME RUN' };
     if (runs > 0) {
       player.rbi = (player.rbi || 0) + runs;
       ensureScoresLength();
@@ -1636,8 +1889,10 @@ function doResult(code) {
       recalcTotals();
       addLog(`→ ${runs}点入る（${player.name} ${runs}RBI）`, true);
       showToast(`${player.name} ${hitLabel}！ +${runs}点`, 'score');
+      showTelop(telopType, telopLabels[telopType], player.name, `${hitLabel}  +${runs}点`);
     } else {
       showToast(`${player.name} ${hitLabel}！`);
+      showTelop(telopType, telopLabels[telopType], player.name, hitLabel);
     }
   }
 
@@ -1704,6 +1959,91 @@ function loadExample() {
   document.getElementById('maxInnings').value = '3';
   document.getElementById('outsToChange').value = '3';
   showToast('例データを読み込みました');
+}
+
+/* ========== TV TELOP EFFECT ========== */
+let _telopTimer = null;
+function showTelop(type, label, main, sub, duration) {
+  duration = duration || 2200;
+  const ov = document.getElementById('telopOverlay');
+  const box = document.getElementById('telopBox');
+  // Clear any existing
+  if (_telopTimer) { clearTimeout(_telopTimer); }
+  ov.classList.remove('show');
+  // Remove old theme
+  ov.className = 'telop-overlay';
+  // Remove old particles
+  const oldP = ov.querySelector('.telop-particles');
+  if (oldP) oldP.remove();
+  const oldF = ov.querySelector('.telop-flash');
+  if (oldF) oldF.remove();
+
+  // Set theme
+  ov.classList.add('telop-' + type);
+
+  // Set content
+  document.getElementById('telopLabel').textContent = label;
+  document.getElementById('telopMain').textContent = main;
+  document.getElementById('telopSub').textContent = sub || '';
+
+  // HR gets flash + particles
+  if (type === 'hr') {
+    const flash = document.createElement('div');
+    flash.className = 'telop-flash';
+    ov.appendChild(flash);
+
+    const pContainer = document.createElement('div');
+    pContainer.className = 'telop-particles';
+    const colors = ['#ef4444','#f59e0b','#fbbf24','#fff','#fb923c'];
+    for (let i = 0; i < 30; i++) {
+      const p = document.createElement('div');
+      p.className = 'telop-particle';
+      p.style.left = (30 + Math.random() * 40) + '%';
+      p.style.top = (30 + Math.random() * 40) + '%';
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      p.style.setProperty('--tx', (Math.random() - 0.5) * 300 + 'px');
+      p.style.setProperty('--ty', (Math.random() - 0.5) * 300 + 'px');
+      p.style.animationDelay = (Math.random() * 0.3) + 's';
+      p.style.width = (3 + Math.random() * 4) + 'px';
+      p.style.height = p.style.width;
+      pContainer.appendChild(p);
+    }
+    ov.appendChild(pContainer);
+    duration = 3000; // HR gets longer display
+  }
+
+  // Win gets particles too
+  if (type === 'win') {
+    const pContainer = document.createElement('div');
+    pContainer.className = 'telop-particles';
+    const colors = ['#fbbf24','#f59e0b','#a855f7','#fff','#06b6d4'];
+    for (let i = 0; i < 20; i++) {
+      const p = document.createElement('div');
+      p.className = 'telop-particle';
+      p.style.left = (20 + Math.random() * 60) + '%';
+      p.style.top = (20 + Math.random() * 60) + '%';
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      p.style.setProperty('--tx', (Math.random() - 0.5) * 250 + 'px');
+      p.style.setProperty('--ty', (Math.random() - 0.5) * 250 + 'px');
+      p.style.animationDelay = (Math.random() * 0.4) + 's';
+      p.style.width = (3 + Math.random() * 3) + 'px';
+      p.style.height = p.style.width;
+      pContainer.appendChild(p);
+    }
+    ov.appendChild(pContainer);
+    duration = 3500;
+  }
+
+  // Show
+  requestAnimationFrame(() => {
+    ov.classList.add('show');
+  });
+
+  // Auto-hide
+  _telopTimer = setTimeout(() => {
+    ov.classList.remove('show');
+    _telopTimer = null;
+  }, duration);
 }
 
 /* ========== BATTER FLIP CARD ========== */
@@ -1916,6 +2256,14 @@ function showResult() {
 
   const t0 = match.teams[0], t1 = match.teams[1];
   const winner = t0.total > t1.total ? t0 : t1.total > t0.total ? t1 : null;
+
+  // Show telop for win/lose/draw
+  if (winner) {
+    const loser = winner === t0 ? t1 : t0;
+    showTelop('win', '🏆 GAME SET', `${winner.name} 勝利！`, `${t0.total} — ${t1.total}`, 3500);
+  } else {
+    showTelop('lose', 'GAME SET', '引き分け', `${t0.total} — ${t1.total}`, 3000);
+  }
 
   let html = '';
   if (winner) {
