@@ -401,35 +401,44 @@
   .game-status { flex: 1; min-width: 0; }
 
   /* Batter Flip Card */
+  /* Batter Flip Card — 3-face carousel via fade */
   .batter-info {
-    perspective: 600px;
     margin-bottom: 12px;
   }
   .batter-card {
     position: relative;
-    height: 72px;
-    transform-style: preserve-3d;
-    transition: transform 0.6s cubic-bezier(0.4,0,0.2,1);
+    min-height: 56px;
   }
-  .batter-card.flipped { transform: rotateX(180deg); }
   .batter-card-face {
-    position: absolute;
-    inset: 0;
-    backface-visibility: hidden;
     border-radius: var(--radius-sm);
     padding: 10px 14px;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+  }
+  .batter-card-face.face-active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+    position: relative;
   }
   .batter-card-front {
     background: linear-gradient(135deg, rgba(6,182,212,0.15), rgba(6,182,212,0.05));
     border: 1px solid rgba(6,182,212,0.3);
   }
-  .batter-card-back {
+  .batter-card-mid {
     background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(168,85,247,0.05));
     border: 1px solid rgba(168,85,247,0.3);
-    transform: rotateX(180deg);
+  }
+  .batter-card-back {
+    background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05));
+    border: 1px solid rgba(245,158,11,0.3);
   }
   .batter-label {
     font-size: 9px;
@@ -444,31 +453,31 @@
     font-weight: 900;
     color: var(--white);
     margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-break: break-all;
+    line-height: 1.3;
   }
   .batter-nickname {
     font-size: 11px;
     color: var(--accent);
     font-weight: 600;
-    margin-top: 1px;
+    margin-top: 2px;
   }
-  .batter-back-label {
+  .batter-face-label {
     font-size: 9px;
     font-weight: 700;
-    color: var(--purple);
     text-transform: uppercase;
     letter-spacing: 2px;
     font-family: 'Orbitron', sans-serif;
     margin-bottom: 4px;
   }
-  .batter-back-stats {
+  .batter-face-label.total { color: var(--purple); }
+  .batter-face-label.game  { color: var(--accent); }
+  .batter-face-stats {
     font-size: 12px;
     color: var(--white-dim);
     line-height: 1.5;
   }
-  .batter-back-stats b { color: var(--white); }
+  .batter-face-stats b { color: var(--white); }
 
   /* Count */
   .count-row {
@@ -1064,16 +1073,21 @@
       <!-- Current batter flip card -->
       <div class="batter-info">
         <div class="batter-card" id="batterFlipCard">
-          <!-- 表: 名前 + 異名 -->
-          <div class="batter-card-face batter-card-front">
+          <!-- Face 0: 名前 + 異名 -->
+          <div class="batter-card-face batter-card-front face-active" id="batterFace0">
             <div class="batter-label">打席</div>
             <div class="batter-name" id="currentBatterName">—</div>
             <div class="batter-nickname" id="currentBatterNickname"></div>
           </div>
-          <!-- 裏: 通算成績 -->
-          <div class="batter-card-face batter-card-back">
-            <div class="batter-back-label">今日の成績</div>
-            <div class="batter-back-stats" id="currentBatterStats"></div>
+          <!-- Face 1: 通算成績 -->
+          <div class="batter-card-face batter-card-mid" id="batterFace1">
+            <div class="batter-face-label total">通算成績</div>
+            <div class="batter-face-stats" id="currentBatterTotal"></div>
+          </div>
+          <!-- Face 2: 今日の成績 -->
+          <div class="batter-card-face batter-card-back" id="batterFace2">
+            <div class="batter-face-label game">今日の成績</div>
+            <div class="batter-face-stats" id="currentBatterGame"></div>
           </div>
         </div>
       </div>
@@ -1694,19 +1708,21 @@ function loadExample() {
 
 /* ========== BATTER FLIP CARD ========== */
 let _batterFlipTimer = null;
-let _batterFlipState = false; // false=表, true=裏
+let _batterFaceIdx = 0; // 0=名前, 1=通算, 2=今日
+
+function showBatterFace(idx) {
+  _batterFaceIdx = idx;
+  for (let i = 0; i < 3; i++) {
+    const el = document.getElementById('batterFace' + i);
+    if (el) el.classList.toggle('face-active', i === idx);
+  }
+}
 
 function resetBatterFlip() {
-  // 表面に戻す
-  _batterFlipState = false;
-  const card = document.getElementById('batterFlipCard');
-  if (card) card.classList.remove('flipped');
-  // タイマーリセット
+  showBatterFace(0);
   if (_batterFlipTimer) clearInterval(_batterFlipTimer);
   _batterFlipTimer = setInterval(() => {
-    _batterFlipState = !_batterFlipState;
-    const c = document.getElementById('batterFlipCard');
-    if (c) c.classList.toggle('flipped', _batterFlipState);
+    showBatterFace((_batterFaceIdx + 1) % 3);
   }, 4000);
 }
 
@@ -1741,10 +1757,15 @@ function refreshUI() {
     // 異名: p.nickname → _nicknames[名前] → なし の優先順
     const nick = p.nickname || (window._nicknames && window._nicknames[p.name]) || '';
     document.getElementById('currentBatterNickname').textContent = nick;
-    // 裏面: 今日の試合成績
+    // Face 1: 通算成績
+    const tAvg = totalAvg(p);
+    const tObp = totalObp(p);
+    document.getElementById('currentBatterTotal').innerHTML =
+      `打率 <b>${tAvg}</b>　出塁率 <b>${tObp}</b><br>${totalVal(p,'hits')}安打　${totalVal(p,'hrs')}HR　${totalVal(p,'rbi')}打点　${totalVal(p,'pa')}打席`;
+    // Face 2: 今日の試合成績
     const gAvg = calcAvg(p.hits||0, p.ab||0);
     const gObp = calcObp(p.hits||0, p.walks||0, p.pa||0);
-    document.getElementById('currentBatterStats').innerHTML =
+    document.getElementById('currentBatterGame').innerHTML =
       `打率 <b>${gAvg}</b>　出塁率 <b>${gObp}</b><br>${p.hits||0}安打　${p.hrs||0}HR　${p.rbi||0}打点　${p.pa||0}打席`;
     // カードを表面に戻してタイマーリセット
     resetBatterFlip();
