@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>個人成績</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap');
+
+  :root {
+    --bg-deep: #0a0e1a;
+    --bg-card: #131a2c;
+    --border: #262f47;
+    --border-bright: #3a4568;
+    --white: #eef1f8;
+    --white-dim: #8b93b0;
+    --white-muted: #545d7c;
+    --cyan: #4cc9f0;
+    --cyan-dim: #2f97b8;
+    --cyan-glow: rgba(76,201,240,0.28);
+    --gold: #ffd166;
+    --gold-glow: rgba(255,209,102,0.3);
+    --danger: #ef4444;
+    --success: #2dd4a7;
+    --radius: 16px;
+    --radius-sm: 12px;
+    --radius-xs: 8px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family:'Zen Kaku Gothic New','Noto Sans JP',-apple-system,sans-serif;
+    background:var(--bg-deep); color:var(--white); min-height:100dvh;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before {
+    content:''; position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse 700px 500px at 15% -5%, rgba(76,201,240,0.08), transparent),
+      radial-gradient(ellipse 600px 500px at 90% 100%, rgba(255,209,102,0.05), transparent);
+    pointer-events:none; z-index:0;
+  }
+  .app-header {
+    position:sticky; top:0; z-index:100;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:14px 16px; background:rgba(10,14,26,0.92);
+    backdrop-filter:blur(14px); border-bottom:1px solid var(--border);
+  }
+  .app-header h1 { font-size:15px; font-weight:900; letter-spacing:3px; }
+  .app-header h1::before { content:'● '; color:var(--danger); font-size:10px; vertical-align:middle; }
+  .app-header .gear {
+    position:absolute; right:14px; font-size:18px; cursor:pointer; color:var(--white-muted);
+    background:none; border:none;
+  }
+
+  .wrap { position:relative; z-index:1; max-width:520px; margin:0 auto; padding:14px 12px 40px; }
+
+  .card {
+    background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; margin-bottom:12px; box-shadow:0 10px 30px rgba(0,0,0,0.45);
+  }
+  .card-title {
+    font-family:'Oswald',sans-serif; font-size:12px; font-weight:600; color:var(--cyan);
+    text-transform:uppercase; letter-spacing:3px; margin-bottom:14px; padding-bottom:10px;
+    border-bottom:1px solid var(--border);
+  }
+  .form-label { font-size:11px; font-weight:700; color:var(--white-dim); margin-bottom:4px; display:block; }
+  .form-input {
+    width:100%; padding:11px 12px; background:rgba(255,255,255,0.04);
+    border:1px solid var(--border); border-radius:var(--radius-xs);
+    color:var(--white); font-size:14px; margin-bottom:10px;
+  }
+  .form-input:focus { outline:none; border-color:var(--cyan); }
+  .btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    width:100%; padding:12px 18px; border:none; border-radius:100px;
+    font-family:'Zen Kaku Gothic New',sans-serif; font-size:13px; font-weight:700;
+    cursor:pointer; background:linear-gradient(135deg,var(--cyan),#2f97b8); color:#031018;
+    box-shadow:0 6px 18px var(--cyan-glow);
+  }
+  .btn:active { transform:scale(0.97); }
+  .btn-ghost {
+    background:rgba(255,255,255,0.05); color:var(--white-dim); border:1px solid var(--border);
+    box-shadow:none; width:auto; padding:8px 16px; font-size:12px;
+  }
+
+  .msg { font-size:12px; padding:9px 12px; border-radius:var(--radius-xs); margin-bottom:10px; display:none; }
+  .msg.info { display:block; background:rgba(76,201,240,0.1); color:var(--cyan); }
+  .msg.error { display:block; background:rgba(239,68,68,0.1); color:var(--danger); }
+  .msg.success { display:block; background:rgba(45,212,167,0.1); color:var(--success); }
+
+  .search-box { position:relative; margin-bottom:10px; }
+  .search-box input {
+    width:100%; padding:11px 14px; background:var(--bg-card);
+    border:1px solid var(--border); border-radius:100px; color:var(--white); font-size:14px;
+  }
+  .search-box input:focus { outline:none; border-color:var(--cyan); }
+
+  .player-list { display:flex; flex-direction:column; gap:6px; }
+  .player-item {
+    display:flex; align-items:center; gap:10px;
+    padding:12px 14px; background:var(--bg-card); border:1px solid var(--border);
+    border-radius:var(--radius-sm); cursor:pointer; transition:all 0.15s;
+  }
+  .player-item:active { transform:scale(0.98); border-color:var(--cyan-dim); }
+  .player-item .pname { flex:1; font-weight:700; font-size:14px; }
+  .player-item .pnick { font-size:11px; color:var(--gold); font-style:italic; margin-left:6px; }
+  .player-item .pavg {
+    font-family:'Oswald',sans-serif; font-size:16px; font-weight:600; color:var(--cyan);
+    font-variant-numeric:tabular-nums;
+  }
+  .player-item .parrow { color:var(--white-muted); font-size:14px; }
+  .empty-note { text-align:center; color:var(--white-muted); font-size:13px; padding:30px 10px; }
+
+  /* ===== detail page ===== */
+  .back-btn {
+    display:inline-flex; align-items:center; gap:4px; color:var(--cyan);
+    font-size:13px; font-weight:700; margin-bottom:12px; cursor:pointer; background:none; border:none;
+    font-family:'Zen Kaku Gothic New',sans-serif;
+  }
+  .player-hero { text-align:center; padding:10px 0 4px; }
+  .player-hero .label { font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:4px; color:var(--white-muted); text-transform:uppercase; }
+  .player-hero h2 { font-size:26px; font-weight:900; margin-top:4px; }
+  .player-hero .nick { color:var(--gold); font-style:italic; font-size:13px; margin-top:2px; }
+
+  .avg-display {
+    text-align:center; margin:18px 0 8px;
+  }
+  .avg-display .num {
+    font-family:'Oswald',sans-serif; font-size:56px; font-weight:600; color:var(--cyan);
+    text-shadow:0 0 24px var(--cyan-glow); line-height:1; font-variant-numeric:tabular-nums;
+  }
+  .avg-display .cap { font-family:'Oswald',sans-serif; font-size:11px; color:var(--white-muted); letter-spacing:3px; text-transform:uppercase; margin-top:6px; }
+
+  .key-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:16px 0; }
+  .key-stat {
+    text-align:center; padding:12px 4px; background:rgba(255,255,255,0.03);
+    border:1px solid var(--border); border-radius:var(--radius-xs);
+  }
+  .key-stat .v { font-family:'Oswald',sans-serif; font-size:22px; font-weight:600; color:var(--white); font-variant-numeric:tabular-nums; }
+  .key-stat .l { font-size:10px; color:var(--white-muted); margin-top:3px; }
+  .key-stat.hr .v { color:var(--gold); }
+
+  .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .stat-row {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 14px; background:rgba(255,255,255,0.02);
+    border:1px solid var(--border); border-radius:var(--radius-xs);
+  }
+  .stat-row .l { font-size:12px; color:var(--white-dim); }
+  .stat-row .v { font-family:'Oswald',sans-serif; font-size:15px; font-weight:600; color:var(--white); font-variant-numeric:tabular-nums; }
+
+  #screenList, #screenDetail { display:none; }
+  #screenList.active, #screenDetail.active { display:block; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>個人成績</h1>
+  <button class="gear" onclick="toggleSettings()" title="設定">⚙</button>
+</div>
+
+<div class="wrap">
+
+  <div class="card" id="settingsCard" style="display:none;">
+    <div class="card-title">スプレッドシート連携設定</div>
+    <label class="form-label">Google Apps Script のURL</label>
+    <input class="form-input" id="urlInput" placeholder="https://script.google.com/macros/s/..." />
+    <button class="btn" onclick="loadData()">読み込む</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <!-- ===== 一覧画面 ===== -->
+  <div id="screenList" class="active">
+    <div class="search-box">
+      <input id="searchInput" placeholder="🔍 選手名で検索" oninput="renderList()" />
+    </div>
+    <div class="player-list" id="playerList"></div>
+  </div>
+
+  <!-- ===== 個人ページ ===== -->
+  <div id="screenDetail">
+    <button class="back-btn" onclick="showList()">← 一覧へ戻る</button>
+    <div class="card">
+      <div class="player-hero">
+        <div class="label">Player</div>
+        <h2 id="dName">-</h2>
+        <div class="nick" id="dNick"></div>
+      </div>
+      <div class="avg-display">
+        <div class="num" id="dAvg">.---</div>
+        <div class="cap">打率 AVG</div>
+      </div>
+      <div class="key-stats">
+        <div class="key-stat"><div class="v" id="dGames">0</div><div class="l">試合数</div></div>
+        <div class="key-stat hr"><div class="v" id="dHr">0</div><div class="l">本塁打</div></div>
+        <div class="key-stat"><div class="v" id="dRbi">0</div><div class="l">打点</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">詳細成績</div>
+      <div class="stat-grid">
+        <div class="stat-row"><span class="l">打席 (PA)</span><span class="v" id="dPa">0</span></div>
+        <div class="stat-row"><span class="l">打数 (AB)</span><span class="v" id="dAb">0</span></div>
+        <div class="stat-row"><span class="l">安打 (H)</span><span class="v" id="dHits">0</span></div>
+        <div class="stat-row"><span class="l">出塁率 (OBP)</span><span class="v" id="dObp">.---</span></div>
+        <div class="stat-row"><span class="l">二塁打</span><span class="v" id="d2b">0</span></div>
+        <div class="stat-row"><span class="l">三塁打</span><span class="v" id="d3b">0</span></div>
+        <div class="stat-row"><span class="l">四球 (BB)</span><span class="v" id="dBb">0</span></div>
+        <div class="stat-row"><span class="l">三振 (K)</span><span class="v" id="dK">0</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let allStats = {};
+
+function getUrl() { return localStorage.getItem('gasUrl') || ''; }
+function saveUrl(u) { if (u) localStorage.setItem('gasUrl', u); }
+
+function toggleSettings() {
+  const el = document.getElementById('settingsCard');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function showMsg(text, type) {
+  const el = document.getElementById('msg');
+  if (!text) { el.className = 'msg'; el.textContent = ''; return; }
+  el.className = 'msg ' + type;
+  el.textContent = text;
+}
+
+window.addEventListener('load', () => {
+  const saved = getUrl();
+  document.getElementById('urlInput').value = saved;
+  if (saved) loadData();
+  else toggleSettings();
+});
+
+async function loadData() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) { showMsg('URLを入力してください', 'error'); return; }
+  saveUrl(url);
+  showMsg('読み込み中...', 'info');
+  try {
+    const res = await fetch(`${url}?action=load`);
+    const json = await res.json();
+    if (json.status !== 'ok') { showMsg('読み込み失敗：' + (json.message || 'エラー'), 'error'); return; }
+    allStats = json.stats || {};
+    const n = Object.keys(allStats).length;
+    if (n === 0) {
+      showMsg('まだ成績データがありません。試合を記録すると表示されます。', 'info');
+    } else {
+      showMsg(`✅ ${n}人の成績を読み込みました`, 'success');
+      document.getElementById('settingsCard').style.display = 'none';
+    }
+    renderList();
+  } catch (err) {
+    showMsg('読み込み失敗：' + err.message, 'error');
+  }
+}
+
+function calcAvg(hits, ab) {
+  if (!ab) return '.---';
+  return '.' + String(Math.round((hits / ab) * 1000)).padStart(3, '0');
+}
+function calcObp(hits, walks, pa) {
+  if (!pa) return '.---';
+  return '.' + String(Math.round(((hits + walks) / pa) * 1000)).padStart(3, '0');
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+function renderList() {
+  const wrap = document.getElementById('playerList');
+  const q = (document.getElementById('searchInput').value || '').trim();
+  const names = Object.keys(allStats)
+    .filter(n => !q || n.includes(q))
+    .sort((a, b) => {
+      const avgA = allStats[a].ab > 0 ? allStats[a].hits / allStats[a].ab : -1;
+      const avgB = allStats[b].ab > 0 ? allStats[b].hits / allStats[b].ab : -1;
+      return avgB - avgA;
+    });
+
+  if (names.length === 0) {
+    wrap.innerHTML = `<div class="empty-note">選手が見つかりません</div>`;
+    return;
+  }
+
+  wrap.innerHTML = names.map(name => {
+    const s = allStats[name];
+    const avg = calcAvg(s.hits, s.ab);
+    return `<div class="player-item" onclick="showDetail('${encodeURIComponent(name)}')">
+      <div class="pname">${escapeHtml(name)}${s.nickname ? `<span class="pnick">${escapeHtml(s.nickname)}</span>` : ''}</div>
+      <div class="pavg">${avg}</div>
+      <div class="parrow">›</div>
+    </div>`;
+  }).join('');
+}
+
+function showList() {
+  document.getElementById('screenList').classList.add('active');
+  document.getElementById('screenDetail').classList.remove('active');
+}
+
+function showDetail(encodedName) {
+  const name = decodeURIComponent(encodedName);
+  const s = allStats[name];
+  if (!s) return;
+  document.getElementById('dName').textContent = name;
+  document.getElementById('dNick').textContent = s.nickname || '';
+  document.getElementById('dAvg').textContent = calcAvg(s.hits, s.ab);
+  document.getElementById('dObp').textContent = calcObp(s.hits, s.walks, s.pa);
+  document.getElementById('dGames').textContent = s.games || 0;
+  document.getElementById('dHr').textContent = s.hrs || 0;
+  document.getElementById('dRbi').textContent = s.rbi || 0;
+  document.getElementById('dPa').textContent = s.pa || 0;
+  document.getElementById('dAb').textContent = s.ab || 0;
+  document.getElementById('dHits').textContent = s.hits || 0;
+  document.getElementById('d2b').textContent = s.doubles || 0;
+  document.getElementById('d3b').textContent = s.triples || 0;
+  document.getElementById('dBb').textContent = s.walks || 0;
+  document.getElementById('dK').textContent = s.ks || 0;
+
+  document.getElementById('screenList').classList.remove('active');
+  document.getElementById('screenDetail').classList.add('active');
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>
